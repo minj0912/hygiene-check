@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/hygiene-check/"
+title = "화장실 위생점검 앱"
+version = "1.0.0"
+id = "artifacts/hygiene-check"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/hygiene-check/" ]
+localPort = 19547
+
+[services.development]
+run = "pnpm --filter @workspace/hygiene-check run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hygiene-check", "run", "build" ]
+publicDir = "artifacts/hygiene-check/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19547"
+BASE_PATH = "/hygiene-check/"
