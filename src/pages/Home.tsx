@@ -77,6 +77,12 @@ export function Home({ onModeChange }: HomeProps) {
           </div>
         </div>
 
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center shadow-sm">
+          <p className="text-sm font-medium text-slate-700">
+            고객님의 편안한 이용을 위해 늘 쾌적한 환경을 유지하고 있습니다.
+          </p>
+        </div>
+
         {selectedRestroom && isLockedByQr ? (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
