@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Droplets } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { RestroomSelector } from "@/components/RestroomSelector";
@@ -13,11 +13,19 @@ interface HomeProps {
   onModeChange: (mode: AppMode) => void;
 }
 
+function getRestroomIdFromUrl(): string {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("restroom") ?? "";
+}
+
 export function Home({ onModeChange }: HomeProps) {
+  const initialRestroomIdFromUrl = useMemo(() => getRestroomIdFromUrl(), []);
   const [restrooms, setRestrooms] = useState<Restroom[]>(DEFAULT_RESTROOMS);
   const [inspectionItems, setInspectionItems] = useState<InspectionItem[]>(DEFAULT_INSPECTION_ITEMS);
-  const [selectedId, setSelectedId] = useState(DEFAULT_RESTROOMS[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(initialRestroomIdFromUrl || DEFAULT_RESTROOMS[0]?.id || "");
   const [showComplaint, setShowComplaint] = useState(false);
+
+  const isLockedByQr = !!initialRestroomIdFromUrl;
 
   useEffect(() => {
     const u1 = subscribeRestrooms(setRestrooms);
@@ -31,11 +39,19 @@ export function Home({ onModeChange }: HomeProps) {
   useEffect(() => {
     if (restrooms.length === 0) return;
 
+    if (initialRestroomIdFromUrl) {
+      const lockedRoomExists = restrooms.some((r) => r.id === initialRestroomIdFromUrl);
+      if (lockedRoomExists) {
+        setSelectedId(initialRestroomIdFromUrl);
+        return;
+      }
+    }
+
     const exists = restrooms.some((r) => r.id === selectedId);
     if (!exists) {
       setSelectedId(restrooms[0].id);
     }
-  }, [restrooms, selectedId]);
+  }, [restrooms, selectedId, initialRestroomIdFromUrl]);
 
   const selectedRestroom =
     restrooms.find((r) => r.id === selectedId) ?? restrooms[0] ?? null;
@@ -61,11 +77,23 @@ export function Home({ onModeChange }: HomeProps) {
           </div>
         </div>
 
-        <RestroomSelector
-          restrooms={restrooms}
-          selectedId={selectedId}
-          onChange={setSelectedId}
-        />
+        {selectedRestroom && isLockedByQr ? (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              현재 화장실
+            </label>
+            <div className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-medium bg-slate-50">
+              {selectedRestroom.name}
+              {selectedRestroom.locationLabel ? ` (${selectedRestroom.locationLabel})` : ""}
+            </div>
+          </div>
+        ) : (
+          <RestroomSelector
+            restrooms={restrooms}
+            selectedId={selectedId}
+            onChange={setSelectedId}
+          />
+        )}
 
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
