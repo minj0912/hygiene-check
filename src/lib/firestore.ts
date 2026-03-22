@@ -67,16 +67,25 @@ export async function updateRestroom(
   id: string,
   data: Partial<Omit<Restroom, "id">>
 ): Promise<void> {
-  await setDoc(
-    doc(db, "restrooms", id),
-    {
-      ...data,
-      floor: data.floor?.trim(),
-      name: data.name?.trim(),
-      locationLabel: data.locationLabel?.trim(),
-    },
-    { merge: true }
-  );
+  const payload: Partial<Omit<Restroom, "id">> = {};
+
+  if (data.floor !== undefined) {
+    payload.floor = data.floor.trim();
+  }
+
+  if (data.name !== undefined) {
+    payload.name = data.name.trim();
+  }
+
+  if (data.locationLabel !== undefined) {
+    payload.locationLabel = data.locationLabel.trim();
+  }
+
+  if (data.order !== undefined) {
+    payload.order = data.order;
+  }
+
+  await setDoc(doc(db, "restrooms", id), payload, { merge: true });
 }
 
 export async function deleteRestroom(id: string): Promise<void> {
