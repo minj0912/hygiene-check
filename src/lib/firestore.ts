@@ -103,25 +103,31 @@ export function subscribeLatestInspectionByRestroom(
 ): () => void {
   const q = query(
     collection(db, "inspections"),
-    where("restroomId", "==", restroomId),
-    orderBy("checkedAt", "desc"),
-    limit(1)
+    orderBy("checkedAt", "desc")
   );
 
   return onSnapshot(
     q,
     (snap) => {
-      if (snap.empty) {
+      const found = snap.docs.find((d) => {
+        const data = d.data() as Inspection;
+        return data.restroomId === restroomId;
+      });
+
+      if (!found) {
         callback(null);
         return;
       }
 
       callback({
-        id: snap.docs[0].id,
-        ...snap.docs[0].data(),
+        id: found.id,
+        ...found.data(),
       } as Inspection);
     },
-    () => callback(null)
+    (error) => {
+      console.error("subscribeLatestInspectionByRestroom error:", error);
+      callback(null);
+    }
   );
 }
 
