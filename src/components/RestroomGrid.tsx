@@ -35,10 +35,12 @@ function getEnglishLabel(item: InspectionItem) {
   const id = item.id?.toLowerCase?.() ?? "";
   const label = normalizeLabel(item.label ?? "");
 
+  // 🔥 순서 중요 (구체적인 것 먼저)
+  if (id === "bin" || label.includes("휴지통")) return "Trash Bin";
+  if (id === "paper" || label.includes("휴지")) return "Toilet Paper";
+
   if (id === "toilet" || label.includes("좌변기")) return "Toilet";
   if (id === "urinal" || label.includes("소변기")) return "Urinal";
-  if (id === "paper" || label.includes("휴지")) return "Toilet Paper";
-  if (id === "bin" || label.includes("휴지통")) return "Trash Bin";
   if (id === "sink" || label.includes("세면대")) return "Sink";
   if (id === "mirror" || label.includes("거울")) return "Mirror";
   if (id === "towel" || label.includes("페이퍼타올") || label.includes("종이타올")) return "Paper Towel";
