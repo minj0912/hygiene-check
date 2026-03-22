@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Droplets } from "lucide-react";
+import { Droplets, ShieldCheck } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { RestroomSelector } from "@/components/RestroomSelector";
 import { RestroomGrid } from "@/components/RestroomGrid";
@@ -61,7 +61,7 @@ export function Home({ onModeChange }: HomeProps) {
       <div className="py-2 space-y-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
               <Droplets size={20} className="text-white" />
             </div>
             <div>
@@ -77,14 +77,25 @@ export function Home({ onModeChange }: HomeProps) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center shadow-sm">
-          <p className="text-sm font-medium text-slate-700">
-            고객님의 편안한 이용을 위해 늘 쾌적한 환경을 유지하고 있습니다.
-          </p>
+        <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-sky-50 px-4 py-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 shadow-sm">
+              <ShieldCheck size={20} className="text-white" />
+            </div>
+
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-blue-900 mb-1">
+                청결 관리 안내
+              </p>
+              <p className="text-[15px] leading-6 font-medium text-slate-800">
+                고객님의 편안한 이용을 위해 늘 쾌적한 환경을 유지하고 있습니다.
+              </p>
+            </div>
+          </div>
         </div>
 
         {selectedRestroom && isLockedByQr ? (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
               현재 화장실
             </label>
