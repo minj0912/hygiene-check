@@ -17,6 +17,8 @@ import { Inspection, Complaint, Restroom, InspectionItem } from "@/types";
 import { getPeriod } from "./utils";
 import { DEFAULT_RESTROOMS, DEFAULT_INSPECTION_ITEMS } from "@/data/restrooms";
 
+const DISCORD_WEBHOOK_URL = "https://discord.com/api/1485146591756161095/2dHC6xk-a76ORytaJsvpaK5hWmEmxeEjuzT9s95Ez88PqGm0qKmIAmx4ZYJCQq3_-0FZ";
+
 // ─── Restrooms ───────────────────────────────────────────────────────────────
 
 export function subscribeRestrooms(callback: (rooms: Restroom[]) => void): () => void {
@@ -252,6 +254,32 @@ export function subscribeInspectionsByDate(
 }
 
 // ─── Complaints ──────────────────────────────────────────────────────────────
+async function sendDiscordComplaintAlert(data: {
+  title: string;
+  location: string;
+  detail: string;
+  restroomName: string;
+}) {
+  const nowText = new Date().toLocaleString("ko-KR");
+
+  const content =
+    `🚨 **새 민원 접수**\n\n` +
+    `**제목**: ${data.title}\n` +
+    `**화장실**: ${data.restroomName}\n` +
+    `**위치**: ${data.location}\n` +
+    `**상세**: ${data.detail}\n` +
+    `**접수시간**: ${nowText}`;
+
+  await fetch(DISCORD_WEBHOOK_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      content,
+    }),
+  });
+}
 
 export async function submitComplaint(
   data: Omit<Complaint, "id" | "createdAt" | "isRead" | "isResolved" | "readAt" | "resolvedAt">
@@ -264,6 +292,17 @@ export async function submitComplaint(
     readAt: null,
     resolvedAt: null,
   });
+
+  try {
+    await sendDiscordComplaintAlert({
+      title: data.title,
+      location: data.location,
+      detail: data.detail,
+      restroomName: data.restroomName,
+    });
+  } catch (error) {
+    console.error("Discord 알림 전송 실패:", error);
+  }
 }
 
 export function subscribeComplaints(callback: (complaints: Complaint[]) => void): () => void {
