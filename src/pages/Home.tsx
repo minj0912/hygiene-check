@@ -63,6 +63,7 @@ export function Home({ onModeChange }: HomeProps) {
     ko: {
       title: "위생점검 현황",
       subtitle: "일일 청결 관리 시스템",
+      comfortMessage: "고객님의 편안한 이용을 위해 늘 쾌적한 환경을 유지하고 있습니다.",
       currentRestroom: "현재 화장실",
       inspectionItems: "점검 항목",
       complaintGuide: "불편사항이 있으시면",
@@ -72,10 +73,11 @@ export function Home({ onModeChange }: HomeProps) {
       admin: "관리자",
     },
     en: {
-      title: "Restroom Inspection Status",
+      title: "Restroom Hygiene Check",
       subtitle: "Daily Cleanliness Management",
+      comfortMessage: "We maintain a pleasant and comfortable environment for your convenience.",
       currentRestroom: "Current Restroom",
-      inspectionItems: "Inspection Items",
+      inspectionItems: "Checklist",
       complaintGuide: "If you experience any inconvenience, please tap",
       complaintButton: "Report Issue",
       complaintGuideEnd: ".",
@@ -99,10 +101,10 @@ export function Home({ onModeChange }: HomeProps) {
           </div>
 
           <div className="flex gap-3 items-center">
-            {/* 🌍 Language 버튼 */}
-            <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1">
+            <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1 bg-white">
               <Languages size={14} className="text-slate-500" />
               <button
+                type="button"
                 onClick={() => setLanguage("ko")}
                 className={`text-xs px-2 py-0.5 rounded ${
                   language === "ko" ? "bg-blue-600 text-white" : "text-slate-600"
@@ -111,6 +113,7 @@ export function Home({ onModeChange }: HomeProps) {
                 KO
               </button>
               <button
+                type="button"
                 onClick={() => setLanguage("en")}
                 className={`text-xs px-2 py-0.5 rounded ${
                   language === "en" ? "bg-blue-600 text-white" : "text-slate-600"
@@ -124,6 +127,12 @@ export function Home({ onModeChange }: HomeProps) {
             <span className="text-slate-300">|</span>
             <ModeEntry mode="admin" label={text.admin} onSuccess={onModeChange} />
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4">
+          <p className="text-sm text-slate-700 leading-6 text-center font-medium">
+            {text.comfortMessage}
+          </p>
         </div>
 
         {selectedRestroom && isLockedByQr ? (
@@ -169,6 +178,7 @@ export function Home({ onModeChange }: HomeProps) {
       {showComplaint && selectedRestroom && (
         <ComplaintForm
           restroom={selectedRestroom}
+          language={language}
           onClose={() => setShowComplaint(false)}
         />
       )}

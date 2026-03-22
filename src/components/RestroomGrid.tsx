@@ -10,22 +10,44 @@ import {
   Wind,
   Pin,
   AlertCircle,
-  PersonStanding,   // 👈 추가 (소변기용)
-  Hand,             // 👈 추가 (세면대용)
+  PersonStanding,
+  Hand,
 } from "lucide-react";
 import { Restroom, Inspection, InspectionItem } from "@/types";
 import { subscribeLatestInspectionByRestroom } from "@/lib/firestore";
 import { toDate } from "@/lib/utils";
 import { DEFAULT_INSPECTION_ITEMS } from "@/data/restrooms";
 
+type Language = "ko" | "en";
+
 interface RestroomGridProps {
   restroom: Restroom;
   inspectionItems: InspectionItem[];
+  language?: Language;
   onComplaintClick: () => void;
 }
 
 function normalizeLabel(label: string) {
   return label.replace(/\s+/g, "").toLowerCase();
+}
+
+function getEnglishLabel(item: InspectionItem) {
+  const id = item.id?.toLowerCase?.() ?? "";
+  const label = normalizeLabel(item.label ?? "");
+
+  if (id === "toilet" || label.includes("좌변기")) return "Toilet";
+  if (id === "urinal" || label.includes("소변기")) return "Urinal";
+  if (id === "paper" || label.includes("휴지")) return "Toilet Paper";
+  if (id === "bin" || label.includes("휴지통")) return "Trash Bin";
+  if (id === "sink" || label.includes("세면대")) return "Sink";
+  if (id === "mirror" || label.includes("거울")) return "Mirror";
+  if (id === "towel" || label.includes("페이퍼타올") || label.includes("종이타올")) return "Paper Towel";
+  if (id === "soap" || label.includes("비누")) return "Soap";
+  if (id === "floor" || label.includes("바닥") || label.includes("벽")) return "Floor / Wall";
+  if (id === "vent" || label.includes("환기") || label.includes("환풍")) return "Ventilation";
+  if (id === "notices" || label.includes("부착물") || label.includes("안내문")) return "Notices";
+
+  return item.label;
 }
 
 function getItemIcon(item: InspectionItem) {
@@ -37,7 +59,7 @@ function getItemIcon(item: InspectionItem) {
   }
 
   if (id === "urinal" || label.includes("소변기")) {
-  return <PersonStanding size={26} />;
+    return <PersonStanding size={26} />;
   }
 
   if (id === "paper" || label.includes("휴지")) {
@@ -45,11 +67,11 @@ function getItemIcon(item: InspectionItem) {
   }
 
   if (id === "bin" || label.includes("휴지통")) {
-  return <Trash2 size={26} />;
+    return <Trash2 size={26} />;
   }
 
   if (id === "sink" || label.includes("세면대")) {
-  return <Hand size={26} />;
+    return <Hand size={26} />;
   }
 
   if (id === "mirror" || label.includes("거울")) {
@@ -81,15 +103,19 @@ function getItemIcon(item: InspectionItem) {
 
 function InspectionStatusBanner({
   inspection,
+  language = "ko",
 }: {
   inspection: Inspection | null | undefined;
+  language?: Language;
 }) {
   if (inspection === undefined) return null;
 
   if (!inspection) {
     return (
       <div className="bg-slate-100 rounded-xl px-4 py-2.5 text-center">
-        <span className="text-sm text-slate-400">점검 내역 없음</span>
+        <span className="text-sm text-slate-400">
+          {language === "ko" ? "점검 내역 없음" : "No inspection record"}
+        </span>
       </div>
     );
   }
@@ -100,10 +126,21 @@ function InspectionStatusBanner({
   const pass = Object.values(inspection.items ?? {}).filter((v) => v === "O").length;
   const fail = Object.values(inspection.items ?? {}).filter((v) => v === "X").length;
 
+  const periodText =
+    language === "ko"
+      ? inspection.period
+      : inspection.period === "오전"
+      ? "AM"
+      : inspection.period === "오후"
+      ? "PM"
+      : inspection.period;
+
   return (
     <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
       <span className="text-sm font-semibold text-green-700">
-        {m}월 {d}일 {inspection.period} 점검 완료
+        {language === "ko"
+          ? `${m}월 ${d}일 ${periodText} 점검 완료`
+          : `${m}/${d} ${periodText} Inspection Completed`}
       </span>
       <div className="flex gap-2">
         <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-bold">
@@ -120,6 +157,7 @@ function InspectionStatusBanner({
 export function RestroomGrid({
   restroom,
   inspectionItems,
+  language = "ko",
   onComplaintClick,
 }: RestroomGridProps) {
   const [inspection, setInspection] = useState<Inspection | null | undefined>(undefined);
@@ -141,7 +179,7 @@ export function RestroomGrid({
 
   return (
     <div className="space-y-3">
-      <InspectionStatusBanner inspection={inspection} />
+      <InspectionStatusBanner inspection={inspection} language={language} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {itemsToShow.map((item) => {
@@ -171,7 +209,9 @@ export function RestroomGrid({
                 {icon}
               </div>
 
-              <span className="text-sm font-semibold text-slate-800">{item.label}</span>
+              <span className="text-sm font-semibold text-slate-800">
+                {language === "ko" ? item.label : getEnglishLabel(item)}
+              </span>
 
               {result ? (
                 <span
@@ -197,8 +237,12 @@ export function RestroomGrid({
           <div className="text-orange-500">
             <AlertCircle size={26} />
           </div>
-          <span className="text-sm font-semibold text-slate-800">불편접수</span>
-          <span className="text-xs text-orange-400 px-2.5 py-0.5">신고하기</span>
+          <span className="text-sm font-semibold text-slate-800">
+            {language === "ko" ? "불편접수" : "Report Issue"}
+          </span>
+          <span className="text-xs text-orange-400 px-2.5 py-0.5">
+            {language === "ko" ? "신고하기" : "Submit"}
+          </span>
         </button>
       </div>
     </div>
