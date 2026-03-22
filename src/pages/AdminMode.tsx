@@ -19,6 +19,8 @@ import {
   updateInspectionItem,
   deleteInspectionItem,
   reorderRestrooms,
+  markComplaintRead,
+  markComplaintResolved,
 } from "@/lib/firestore";
 import { Inspection, Complaint, Restroom, InspectionItem } from "@/types";
 
@@ -783,7 +785,11 @@ export function AdminMode({ onBack }: AdminModeProps) {
         )}
 
         {tab === "complaints" && (
-          <AdminComplaintList complaints={complaints} />
+          <AdminComplaintList
+            complaints={complaints}
+             onMarkRead={markComplaintRead}
+             onMarkResolved={markComplaintResolved}
+           />
         )}
 
         {tab === "manage" && (

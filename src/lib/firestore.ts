@@ -254,13 +254,14 @@ export function subscribeInspectionsByDate(
 // ─── Complaints ──────────────────────────────────────────────────────────────
 
 export async function submitComplaint(
-  data: Omit<Complaint, "id" | "createdAt" | "isRead" | "isResolved" | "resolvedAt">
+  data: Omit<Complaint, "id" | "createdAt" | "isRead" | "isResolved" | "readAt" | "resolvedAt">
 ): Promise<void> {
   await addDoc(collection(db, "complaints"), {
     ...data,
     createdAt: Timestamp.fromDate(new Date()),
     isRead: false,
     isResolved: false,
+    readAt: null,
     resolvedAt: null,
   });
 }
@@ -283,7 +284,10 @@ export function subscribeComplaints(callback: (complaints: Complaint[]) => void)
 }
 
 export async function markComplaintRead(id: string): Promise<void> {
-  await updateDoc(doc(db, "complaints", id), { isRead: true });
+  await updateDoc(doc(db, "complaints", id), {
+    isRead: true,
+    readAt: Timestamp.fromDate(new Date()),
+  });
 }
 
 export async function markComplaintResolved(id: string): Promise<void> {

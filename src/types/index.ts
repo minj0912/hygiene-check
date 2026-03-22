@@ -38,6 +38,7 @@ export interface Complaint {
   createdAt: Timestamp | Date;
   isRead: boolean;
   isResolved: boolean;
+  readAt?: Timestamp | Date | null;
   resolvedAt?: Timestamp | Date | null;
 }
 
