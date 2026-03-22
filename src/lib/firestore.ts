@@ -17,7 +17,8 @@ import { Inspection, Complaint, Restroom, InspectionItem } from "@/types";
 import { getPeriod } from "./utils";
 import { DEFAULT_RESTROOMS, DEFAULT_INSPECTION_ITEMS } from "@/data/restrooms";
 
-const DISCORD_WEBHOOK_URL = "https://discord.com/api/1485146591756161095/2dHC6xk-a76ORytaJsvpaK5hWmEmxeEjuzT9s95Ez88PqGm0qKmIAmx4ZYJCQq3_-0FZ";
+const DISCORD_BRIDGE_URL =
+  "https://script.google.com/macros/s/AKfycbykTwt5DfTCpPVSdhGWhTgPjQiabN979NbZGfsAl_xGEYU6z-OH_bKW1VLagzNMepR-Qg/exec";
 
 // ─── Restrooms ───────────────────────────────────────────────────────────────
 
@@ -254,31 +255,36 @@ export function subscribeInspectionsByDate(
 }
 
 // ─── Complaints ──────────────────────────────────────────────────────────────
+
 async function sendDiscordComplaintAlert(data: {
   title: string;
   location: string;
   detail: string;
   restroomName: string;
 }) {
-  const nowText = new Date().toLocaleString("ko-KR");
+  const createdAt = new Date().toLocaleString("ko-KR");
 
-  const content =
-    `🚨 **새 민원 접수**\n\n` +
-    `**제목**: ${data.title}\n` +
-    `**화장실**: ${data.restroomName}\n` +
-    `**위치**: ${data.location}\n` +
-    `**상세**: ${data.detail}\n` +
-    `**접수시간**: ${nowText}`;
-
-  await fetch(DISCORD_WEBHOOK_URL, {
+  const response = await fetch(DISCORD_BRIDGE_URL, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "text/plain;charset=utf-8",
     },
     body: JSON.stringify({
-      content,
+      title: data.title,
+      restroomName: data.restroomName,
+      location: data.location,
+      detail: data.detail,
+      createdAt,
     }),
   });
+
+  const text = await response.text();
+  console.log("Apps Script response status:", response.status);
+  console.log("Apps Script response body:", text);
+
+  if (!response.ok) {
+    throw new Error(`Discord bridge 요청 실패: ${response.status} ${text}`);
+  }
 }
 
 export async function submitComplaint(
