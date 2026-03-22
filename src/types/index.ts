@@ -38,6 +38,7 @@ export interface Complaint {
   createdAt: Timestamp | Date;
   isRead: boolean;
   isResolved: boolean;
+  resolvedAt?: Timestamp | Date | null;
 }
 
 export type AppMode = "home" | "inspector" | "admin";

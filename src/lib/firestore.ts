@@ -88,6 +88,14 @@ export async function updateRestroom(
   await setDoc(doc(db, "restrooms", id), payload, { merge: true });
 }
 
+export async function reorderRestrooms(restrooms: Restroom[]): Promise<void> {
+  const tasks = restrooms.map((room, index) =>
+    updateRestroom(room.id, { order: index + 1 })
+  );
+
+  await Promise.all(tasks);
+}
+
 export async function deleteRestroom(id: string): Promise<void> {
   await deleteDoc(doc(db, "restrooms", id));
 }
@@ -246,13 +254,14 @@ export function subscribeInspectionsByDate(
 // ─── Complaints ──────────────────────────────────────────────────────────────
 
 export async function submitComplaint(
-  data: Omit<Complaint, "id" | "createdAt" | "isRead" | "isResolved">
+  data: Omit<Complaint, "id" | "createdAt" | "isRead" | "isResolved" | "resolvedAt">
 ): Promise<void> {
   await addDoc(collection(db, "complaints"), {
     ...data,
     createdAt: Timestamp.fromDate(new Date()),
     isRead: false,
     isResolved: false,
+    resolvedAt: null,
   });
 }
 
@@ -278,13 +287,8 @@ export async function markComplaintRead(id: string): Promise<void> {
 }
 
 export async function markComplaintResolved(id: string): Promise<void> {
-  await updateDoc(doc(db, "complaints", id), { isResolved: true });
-}
-
-export async function reorderRestrooms(restrooms: Restroom[]): Promise<void> {
-  const tasks = restrooms.map((room, index) =>
-    updateRestroom(room.id, { order: index + 1 })
-  );
-
-  await Promise.all(tasks);
+  await updateDoc(doc(db, "complaints", id), {
+    isResolved: true,
+    resolvedAt: Timestamp.fromDate(new Date()),
+  });
 }

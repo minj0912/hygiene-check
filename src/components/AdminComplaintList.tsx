@@ -1,10 +1,15 @@
 import React from "react";
 import { Complaint } from "@/types";
 import { formatDateTime } from "@/lib/utils";
-import { AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { CheckCircle, Clock } from "lucide-react";
 
 interface AdminComplaintListProps {
   complaints: Complaint[];
+}
+
+function safeFormatDateTime(value?: any) {
+  if (!value) return "";
+  return formatDateTime(value);
 }
 
 export function AdminComplaintList({ complaints }: AdminComplaintListProps) {
@@ -34,23 +39,39 @@ export function AdminComplaintList({ complaints }: AdminComplaintListProps) {
               )}
               <span className="font-bold text-slate-800">{item.title}</span>
             </div>
+
             <div className="flex items-center gap-1.5 shrink-0">
               {item.isResolved ? (
                 <span className="inline-flex items-center gap-1 text-xs text-green-600 font-semibold">
-                  <CheckCircle size={13} /> 처리완료
+                  <CheckCircle size={13} />
+                  처리완료
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-xs text-orange-500 font-semibold">
-                  <Clock size={13} /> 처리대기
+                  <Clock size={13} />
+                  처리대기
                 </span>
               )}
             </div>
           </div>
+
           <p className="text-sm text-slate-500 mb-1">
             <span className="font-medium text-slate-600">위치:</span> {item.location}
           </p>
-          <p className="text-sm text-slate-600 mb-2">{item.detail}</p>
-          <p className="text-xs text-slate-400">{formatDateTime(item.createdAt)}</p>
+
+          <p className="text-sm text-slate-600 mb-3">{item.detail}</p>
+
+          <div className="space-y-1">
+            <p className="text-xs text-slate-400">
+              접수시간: {safeFormatDateTime(item.createdAt)}
+            </p>
+
+            {item.isResolved && item.resolvedAt && (
+              <p className="text-xs text-green-600 font-medium">
+                처리완료 시간: {safeFormatDateTime(item.resolvedAt)}
+              </p>
+            )}
+          </div>
         </div>
       ))}
     </div>
