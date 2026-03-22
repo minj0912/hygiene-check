@@ -1,31 +1,82 @@
 import React, { useEffect, useState } from "react";
 import {
-  Toilet, Droplets, ScrollText, Trash2, WashingMachine, ScanFace,
-  FileText, FlaskConical, LayoutGrid, Wind, Pin, AlertCircle,
+  Toilet,
+  Droplets,
+  ScrollText,
+  Trash2,
+  WashingMachine,
+  ScanFace,
+  FileText,
+  FlaskConical,
+  LayoutGrid,
+  Wind,
+  Pin,
+  AlertCircle,
 } from "lucide-react";
 import { Restroom, Inspection, InspectionItem } from "@/types";
 import { subscribeLatestInspectionByRestroom } from "@/lib/firestore";
 import { toDate } from "@/lib/utils";
 import { DEFAULT_INSPECTION_ITEMS } from "@/data/restrooms";
 
-const ITEM_ICONS: Record<string, React.ReactNode> = {
-  toilet: <Toilet size={26} />,
-  urinal: <Droplets size={26} />,
-  paper: <ScrollText size={26} />,
-  bin: <Trash2 size={26} />,
-  sink: <WashingMachine size={26} />,
-  mirror: <ScanFace size={26} />,
-  towel: <FileText size={26} />,
-  soap: <FlaskConical size={26} />,
-  floor: <LayoutGrid size={26} />,
-  vent: <Wind size={26} />,
-  notices: <Pin size={26} />,
-};
-
 interface RestroomGridProps {
   restroom: Restroom;
   inspectionItems: InspectionItem[];
   onComplaintClick: () => void;
+}
+
+function normalizeLabel(label: string) {
+  return label.replace(/\s+/g, "").toLowerCase();
+}
+
+function getItemIcon(item: InspectionItem) {
+  const id = item.id?.toLowerCase?.() ?? "";
+  const label = normalizeLabel(item.label ?? "");
+
+  if (id === "toilet" || label.includes("좌변기")) {
+    return <Toilet size={26} />;
+  }
+
+  if (id === "urinal" || label.includes("소변기")) {
+    return <Droplets size={26} />;
+  }
+
+  if (id === "paper" || label.includes("휴지")) {
+    return <ScrollText size={26} />;
+  }
+
+  if (id === "bin" || label.includes("휴지통")) {
+    return <Trash2 size={26} />;
+  }
+
+  if (id === "sink" || label.includes("세면대")) {
+    return <WashingMachine size={26} />;
+  }
+
+  if (id === "mirror" || label.includes("거울")) {
+    return <ScanFace size={26} />;
+  }
+
+  if (id === "towel" || label.includes("페이퍼타올") || label.includes("종이타올")) {
+    return <FileText size={26} />;
+  }
+
+  if (id === "soap" || label.includes("비누")) {
+    return <FlaskConical size={26} />;
+  }
+
+  if (id === "floor" || label.includes("바닥") || label.includes("벽")) {
+    return <LayoutGrid size={26} />;
+  }
+
+  if (id === "vent" || label.includes("환기") || label.includes("환풍")) {
+    return <Wind size={26} />;
+  }
+
+  if (id === "notices" || label.includes("부착물") || label.includes("안내문")) {
+    return <Pin size={26} />;
+  }
+
+  return <Pin size={26} />;
 }
 
 function InspectionStatusBanner({
@@ -95,7 +146,7 @@ export function RestroomGrid({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {itemsToShow.map((item) => {
           const result = inspection?.items?.[item.id];
-          const icon = ITEM_ICONS[item.id] ?? <Pin size={26} />;
+          const icon = getItemIcon(item);
 
           return (
             <div
@@ -119,6 +170,7 @@ export function RestroomGrid({
               >
                 {icon}
               </div>
+
               <span className="text-sm font-semibold text-slate-800">{item.label}</span>
 
               {result ? (
