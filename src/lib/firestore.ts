@@ -271,3 +271,11 @@ export async function markComplaintRead(id: string): Promise<void> {
 export async function markComplaintResolved(id: string): Promise<void> {
   await updateDoc(doc(db, "complaints", id), { isResolved: true });
 }
+
+export async function reorderRestrooms(restrooms: Restroom[]): Promise<void> {
+  const tasks = restrooms.map((room, index) =>
+    updateRestroom(room.id, { order: index + 1 })
+  );
+
+  await Promise.all(tasks);
+}
