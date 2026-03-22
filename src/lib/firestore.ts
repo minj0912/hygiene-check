@@ -5,12 +5,12 @@ import {
   query,
   where,
   orderBy,
-  limit,
   Timestamp,
   doc,
   updateDoc,
   deleteDoc,
   setDoc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Inspection, Complaint, Restroom, InspectionItem } from "@/types";
@@ -41,15 +41,42 @@ export function subscribeRestrooms(callback: (rooms: Restroom[]) => void): () =>
   );
 }
 
-export async function addRestroom(data: Omit<Restroom, "id">): Promise<void> {
-  await addDoc(collection(db, "restrooms"), data);
+export async function addRestroom(data: Restroom): Promise<void> {
+  const customId = data.id.trim().toLowerCase();
+
+  if (!customId) {
+    throw new Error("화장실 ID가 비어 있습니다.");
+  }
+
+  const docRef = doc(db, "restrooms", customId);
+  const snap = await getDoc(docRef);
+
+  if (snap.exists()) {
+    throw new Error("이미 사용 중인 화장실 ID입니다.");
+  }
+
+  await setDoc(docRef, {
+    floor: data.floor.trim(),
+    name: data.name.trim(),
+    locationLabel: (data.locationLabel ?? "").trim(),
+    order: data.order ?? 0,
+  });
 }
 
 export async function updateRestroom(
   id: string,
   data: Partial<Omit<Restroom, "id">>
 ): Promise<void> {
-  await setDoc(doc(db, "restrooms", id), data, { merge: true });
+  await setDoc(
+    doc(db, "restrooms", id),
+    {
+      ...data,
+      floor: data.floor?.trim(),
+      name: data.name?.trim(),
+      locationLabel: data.locationLabel?.trim(),
+    },
+    { merge: true }
+  );
 }
 
 export async function deleteRestroom(id: string): Promise<void> {
@@ -101,10 +128,7 @@ export function subscribeLatestInspectionByRestroom(
   restroomId: string,
   callback: (inspection: Inspection | null) => void
 ): () => void {
-  const q = query(
-    collection(db, "inspections"),
-    orderBy("checkedAt", "desc")
-  );
+  const q = query(collection(db, "inspections"), orderBy("checkedAt", "desc"));
 
   return onSnapshot(
     q,

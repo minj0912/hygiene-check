@@ -78,7 +78,6 @@ function DailyInspectionView({
 
   return (
     <div className="space-y-4">
-      {/* Date navigator */}
       <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl p-3">
         <button onClick={() => stepDate(-1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">
           <ChevronLeft size={18} className="text-slate-600" />
@@ -94,7 +93,6 @@ function DailyInspectionView({
         </button>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 text-center">
           <p className="text-xl font-bold text-slate-800">{restrooms.length}</p>
@@ -110,7 +108,6 @@ function DailyInspectionView({
         </div>
       </div>
 
-      {/* Table */}
       {restrooms.length === 0 || inspectionItems.length === 0 ? (
         <div className="text-center py-10 text-slate-400 text-sm">데이터를 불러오는 중...</div>
       ) : (
@@ -148,7 +145,6 @@ function DailyInspectionView({
                               <span className="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded-full font-bold">X {xCount}</span>
                             </div>
                           </div>
-                          {/* Item results row */}
                           <div className="px-4 py-3 flex flex-wrap gap-1.5">
                             {inspectionItems.map((item) => {
                               const r = ins.items?.[item.id];
@@ -183,33 +179,129 @@ function DailyInspectionView({
 
 // ─── Restroom CRUD ─────────────────────────────────────────────────────────
 
+function isValidRestroomId(value: string) {
+  return /^[a-z0-9_]+$/.test(value);
+}
+
+function makeRestroomId(floor: string, name: string, restrooms: Restroom[]) {
+  const floorPart = floor.trim().toLowerCase().replace(/\s+/g, "");
+
+  let genderPart = "restroom";
+  if (name.includes("여자")) genderPart = "women";
+  else if (name.includes("남자")) genderPart = "men";
+  else if (name.includes("가족")) genderPart = "family";
+
+  const samePrefixCount = restrooms.filter((r) =>
+    r.id.startsWith(`${floorPart}_${genderPart}`)
+  ).length;
+
+  return `${floorPart}_${genderPart}_${samePrefixCount + 1}`;
+}
+
 function RestroomManager({ restrooms }: { restrooms: Restroom[] }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<Restroom>>({});
   const [adding, setAdding] = useState(false);
-  const [newRoom, setNewRoom] = useState({ floor: "", name: "", locationLabel: "" });
+  const [newRoom, setNewRoom] = useState<Restroom>({
+  id: "",
+  floor: "",
+  name: "",
+  locationLabel: "",
+  order: 0,
+  });
+
+  const baseUrl = `${window.location.origin}${window.location.pathname}`;
 
   const startEdit = (r: Restroom) => {
     setEditId(r.id);
-    setEditValues({ floor: r.floor, name: r.name, locationLabel: r.locationLabel });
+    setEditValues({
+      floor: r.floor,
+      name: r.name,
+      locationLabel: r.locationLabel,
+      order: r.order,
+    });
   };
 
   const saveEdit = async () => {
     if (!editId) return;
-    await updateRestroom(editId, editValues);
-    setEditId(null);
+
+    const trimmedFloor = (editValues.floor ?? "").trim();
+    const trimmedName = (editValues.name ?? "").trim();
+    const trimmedLocation = (editValues.locationLabel ?? "").trim();
+
+    if (!trimmedFloor || !trimmedName) {
+      alert("층과 화장실명은 필수입니다.");
+      return;
+    }
+
+    try {
+      await updateRestroom(editId, {
+        floor: trimmedFloor,
+        name: trimmedName,
+        locationLabel: trimmedLocation,
+        order: editValues.order ?? 0,
+      });
+      setEditId(null);
+    } catch (error) {
+      console.error(error);
+      alert("화장실 수정 중 오류가 발생했습니다.");
+    }
   };
 
   const handleAdd = async () => {
-    if (!newRoom.floor || !newRoom.name) return;
-    await addRestroom({
-      floor: newRoom.floor,
-      name: newRoom.name,
-      locationLabel: newRoom.locationLabel,
-      order: restrooms.length + 1,
-    });
-    setNewRoom({ floor: "", name: "", locationLabel: "" });
-    setAdding(false);
+    const trimmedId = newRoom.id.trim().toLowerCase();
+    const trimmedFloor = newRoom.floor.trim();
+    const trimmedName = newRoom.name.trim();
+    const trimmedLocation = newRoom.locationLabel.trim();
+
+    if (!trimmedId || !trimmedFloor || !trimmedName) {
+      alert("ID, 층, 화장실명은 필수입니다.");
+      return;
+    }
+
+    if (!isValidRestroomId(trimmedId)) {
+      alert("화장실 ID는 영문 소문자, 숫자, 언더스코어(_)만 사용할 수 있습니다.");
+      return;
+    }
+
+    const duplicated = restrooms.some((r) => r.id === trimmedId);
+    if (duplicated) {
+      alert("이미 사용 중인 화장실 ID입니다.");
+      return;
+    }
+
+    try {
+      await addRestroom({
+        id: trimmedId,
+        floor: trimmedFloor,
+        name: trimmedName,
+        locationLabel: trimmedLocation,
+        order: restrooms.length + 1,
+      });
+
+      setNewRoom({
+        id: "",
+        floor: "",
+        name: "",
+        locationLabel: "",
+      });
+      setAdding(false);
+      alert("화장실이 추가되었습니다.");
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : "화장실 추가 중 오류가 발생했습니다.");
+    }
+  };
+
+  const copyRoomLink = async (roomId: string) => {
+    try {
+      const roomUrl = `${baseUrl}?restroom=${encodeURIComponent(roomId)}`;
+      await navigator.clipboard.writeText(roomUrl);
+      alert("링크가 복사되었습니다.");
+    } catch (error) {
+      console.error(error);
+      alert("링크 복사에 실패했습니다.");
+    }
   };
 
   return (
@@ -225,57 +317,180 @@ function RestroomManager({ restrooms }: { restrooms: Restroom[] }) {
       </div>
 
       {adding && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
-          <div className="grid grid-cols-3 gap-2">
-            <input value={newRoom.floor} onChange={(e) => setNewRoom({ ...newRoom, floor: e.target.value })}
-              placeholder="층 (예: 10F)" className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            <input value={newRoom.name} onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
-              placeholder="화장실명" className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 col-span-2" />
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">화장실 ID</label>
+            <input
+              value={newRoom.id}
+              onChange={(e) => setNewRoom({ ...newRoom, id: e.target.value.toLowerCase() })}
+              placeholder="예: 10f_women_2"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              영문 소문자, 숫자, 언더스코어(_)만 사용 가능
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                setNewRoom((prev) => ({
+                  ...prev,
+                  id: makeRestroomId(prev.floor, prev.name, restrooms),
+                }))
+              }
+              className="mt-2 text-xs px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50"
+            >
+              ID 자동 생성
+            </button>
           </div>
-          <input value={newRoom.locationLabel} onChange={(e) => setNewRoom({ ...newRoom, locationLabel: e.target.value })}
-            placeholder="위치 설명 (예: 에스컬레이터 옆)" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+
+          <div className="grid grid-cols-3 gap-2">
+            <input
+              value={newRoom.floor}
+              onChange={(e) => setNewRoom({ ...newRoom, floor: e.target.value })}
+              placeholder="층 (예: 10F)"
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <input
+              value={newRoom.name}
+              onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
+              placeholder="화장실명"
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 col-span-2"
+            />
+          </div>
+
+          <input
+            value={newRoom.locationLabel}
+            onChange={(e) => setNewRoom({ ...newRoom, locationLabel: e.target.value })}
+            placeholder="위치 설명 (예: 에스컬레이터 옆)"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+
           <div className="flex gap-2">
-            <button onClick={handleAdd} className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700">저장</button>
-            <button onClick={() => setAdding(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">취소</button>
+            <button
+              onClick={handleAdd}
+              className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700"
+            >
+              저장
+            </button>
+            <button
+              onClick={() => {
+                setAdding(false);
+                setNewRoom({ id: "", floor: "", name: "", locationLabel: "" });
+              }}
+              className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+            >
+              취소
+            </button>
           </div>
         </div>
       )}
 
       <div className="space-y-2">
-        {restrooms.map((r) => (
-          <div key={r.id} className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm">
-            {editId === r.id ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
-                  <input value={editValues.floor ?? ""} onChange={(e) => setEditValues({ ...editValues, floor: e.target.value })}
-                    placeholder="층" className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                  <input value={editValues.name ?? ""} onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
-                    placeholder="화장실명" className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 col-span-2" />
-                </div>
-                <input value={editValues.locationLabel ?? ""} onChange={(e) => setEditValues({ ...editValues, locationLabel: e.target.value })}
-                  placeholder="위치 설명" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                <div className="flex gap-2">
-                  <button onClick={saveEdit} className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold"><Check size={13} /> 저장</button>
-                  <button onClick={() => setEditId(null)} className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600"><XIcon size={13} /> 취소</button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{r.floor}</span>
-                    <span className="text-sm font-semibold text-slate-800">{r.name}</span>
+        {restrooms.map((r) => {
+          const roomUrl = `${baseUrl}?restroom=${encodeURIComponent(r.id)}`;
+
+          return (
+            <div key={r.id} className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm">
+              {editId === r.id ? (
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">화장실 ID</label>
+                    <input
+                      value={r.id}
+                      readOnly
+                      className="w-full border border-slate-200 bg-slate-100 rounded-lg px-3 py-2 text-sm text-slate-500"
+                    />
+                    <p className="mt-1 text-xs text-slate-400">
+                      저장된 QR 링크와 연결되므로 ID는 수정할 수 없습니다.
+                    </p>
                   </div>
-                  {r.locationLabel && <p className="text-xs text-slate-400 mt-0.5 ml-10">{r.locationLabel}</p>}
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      value={editValues.floor ?? ""}
+                      onChange={(e) => setEditValues({ ...editValues, floor: e.target.value })}
+                      placeholder="층"
+                      className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <input
+                      value={editValues.name ?? ""}
+                      onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
+                      placeholder="화장실명"
+                      className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 col-span-2"
+                    />
+                  </div>
+
+                  <input
+                    value={editValues.locationLabel ?? ""}
+                    onChange={(e) => setEditValues({ ...editValues, locationLabel: e.target.value })}
+                    placeholder="위치 설명"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveEdit}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold"
+                    >
+                      <Check size={13} /> 저장
+                    </button>
+                    <button
+                      onClick={() => setEditId(null)}
+                      className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600"
+                    >
+                      <XIcon size={13} /> 취소
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1.5">
-                  <button onClick={() => startEdit(r)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"><Pencil size={14} /></button>
-                  <button onClick={() => deleteRestroom(r.id)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={14} /></button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{r.floor}</span>
+                        <span className="text-sm font-semibold text-slate-800">{r.name}</span>
+                      </div>
+                      {r.locationLabel && <p className="text-xs text-slate-400 mt-0.5 ml-10">{r.locationLabel}</p>}
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => startEdit(r)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => deleteRestroom(r.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-red-400"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                    <p className="text-[11px] text-slate-500 font-semibold">ID</p>
+                    <p className="text-xs text-slate-700 font-mono break-all">{r.id}</p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                    <p className="text-[11px] text-slate-500 font-semibold">링크</p>
+                    <p className="text-xs text-slate-700 break-all">{roomUrl}</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => copyRoomLink(r.id)}
+                      className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50"
+                    >
+                      링크 복사
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -386,7 +601,6 @@ export function AdminMode({ onBack }: AdminModeProps) {
   return (
     <Layout>
       <div className="py-2 space-y-4">
-        {/* Header */}
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -400,7 +614,6 @@ export function AdminMode({ onBack }: AdminModeProps) {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2">
           {tabs.map((t) => (
             <button
@@ -423,7 +636,6 @@ export function AdminMode({ onBack }: AdminModeProps) {
           ))}
         </div>
 
-        {/* Content */}
         {tab === "inspection" && (
           <DailyInspectionView restrooms={restrooms} inspectionItems={inspectionItems} />
         )}
