@@ -10,7 +10,6 @@ import {
   doc,
   updateDoc,
   deleteDoc,
-  getDocs,
   setDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -22,14 +21,21 @@ import { DEFAULT_RESTROOMS, DEFAULT_INSPECTION_ITEMS } from "@/data/restrooms";
 
 export function subscribeRestrooms(callback: (rooms: Restroom[]) => void): () => void {
   const q = query(collection(db, "restrooms"), orderBy("order", "asc"));
+
   return onSnapshot(
     q,
     (snap) => {
       if (snap.empty) {
         callback(DEFAULT_RESTROOMS);
-      } else {
-        callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Restroom));
+        return;
       }
+
+      callback(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as Restroom[]
+      );
     },
     () => callback(DEFAULT_RESTROOMS)
   );
@@ -39,8 +45,11 @@ export async function addRestroom(data: Omit<Restroom, "id">): Promise<void> {
   await addDoc(collection(db, "restrooms"), data);
 }
 
-export async function updateRestroom(id: string, data: Partial<Omit<Restroom, "id">>): Promise<void> {
-  await updateDoc(doc(db, "restrooms", id), data);
+export async function updateRestroom(
+  id: string,
+  data: Partial<Omit<Restroom, "id">>
+): Promise<void> {
+  await setDoc(doc(db, "restrooms", id), data, { merge: true });
 }
 
 export async function deleteRestroom(id: string): Promise<void> {
@@ -51,14 +60,21 @@ export async function deleteRestroom(id: string): Promise<void> {
 
 export function subscribeInspectionItems(callback: (items: InspectionItem[]) => void): () => void {
   const q = query(collection(db, "inspectionItems"), orderBy("order", "asc"));
+
   return onSnapshot(
     q,
     (snap) => {
       if (snap.empty) {
         callback(DEFAULT_INSPECTION_ITEMS);
-      } else {
-        callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as InspectionItem));
+        return;
       }
+
+      callback(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as InspectionItem[]
+      );
     },
     () => callback(DEFAULT_INSPECTION_ITEMS)
   );
@@ -68,8 +84,11 @@ export async function addInspectionItem(data: Omit<InspectionItem, "id">): Promi
   await addDoc(collection(db, "inspectionItems"), data);
 }
 
-export async function updateInspectionItem(id: string, data: Partial<Omit<InspectionItem, "id">>): Promise<void> {
-  await updateDoc(doc(db, "inspectionItems", id), data);
+export async function updateInspectionItem(
+  id: string,
+  data: Partial<Omit<InspectionItem, "id">>
+): Promise<void> {
+  await setDoc(doc(db, "inspectionItems", id), data, { merge: true });
 }
 
 export async function deleteInspectionItem(id: string): Promise<void> {
@@ -88,11 +107,19 @@ export function subscribeLatestInspectionByRestroom(
     orderBy("checkedAt", "desc"),
     limit(1)
   );
+
   return onSnapshot(
     q,
     (snap) => {
-      if (snap.empty) callback(null);
-      else callback({ id: snap.docs[0].id, ...snap.docs[0].data() } as Inspection);
+      if (snap.empty) {
+        callback(null);
+        return;
+      }
+
+      callback({
+        id: snap.docs[0].id,
+        ...snap.docs[0].data(),
+      } as Inspection);
     },
     () => callback(null)
   );
@@ -102,6 +129,7 @@ export async function submitInspection(
   data: Omit<Inspection, "id" | "checkedAt" | "period" | "status">
 ): Promise<void> {
   const now = new Date();
+
   await addDoc(collection(db, "inspections"), {
     ...data,
     checkedAt: Timestamp.fromDate(now),
@@ -114,31 +142,44 @@ export function subscribeAllLatestInspections(
   restroomIds: string[],
   callback: (map: Record<string, Inspection>) => void
 ): () => void {
-  if (restroomIds.length === 0) { callback({}); return () => {}; }
+  if (restroomIds.length === 0) {
+    callback({});
+    return () => {};
+  }
+
   const q = query(collection(db, "inspections"), orderBy("checkedAt", "desc"));
+
   return onSnapshot(
     q,
     (snap) => {
       const map: Record<string, Inspection> = {};
+
       snap.docs.forEach((d) => {
-        const data = { id: d.id, ...d.data() } as Inspection;
+        const data = {
+          id: d.id,
+          ...d.data(),
+        } as Inspection;
+
         if (restroomIds.includes(data.restroomId) && !map[data.restroomId]) {
           map[data.restroomId] = data;
         }
       });
+
       callback(map);
     },
     () => callback({})
   );
 }
 
-/** 특정 날짜의 모든 점검 기록 구독 */
+// ─── 특정 날짜 점검 기록 ────────────────────────────────────────────────────
+
 export function subscribeInspectionsByDate(
   date: Date,
   callback: (inspections: Inspection[]) => void
 ): () => void {
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
+
   const end = new Date(date);
   end.setHours(23, 59, 59, 999);
 
@@ -148,10 +189,16 @@ export function subscribeInspectionsByDate(
     where("checkedAt", "<=", Timestamp.fromDate(end)),
     orderBy("checkedAt", "asc")
   );
+
   return onSnapshot(
     q,
     (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Inspection));
+      callback(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as Inspection[]
+      );
     },
     () => callback([])
   );
@@ -172,9 +219,17 @@ export async function submitComplaint(
 
 export function subscribeComplaints(callback: (complaints: Complaint[]) => void): () => void {
   const q = query(collection(db, "complaints"), orderBy("createdAt", "desc"));
+
   return onSnapshot(
     q,
-    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Complaint)),
+    (snap) => {
+      callback(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as Complaint[]
+      );
+    },
     () => callback([])
   );
 }

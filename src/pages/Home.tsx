@@ -16,21 +16,33 @@ interface HomeProps {
 export function Home({ onModeChange }: HomeProps) {
   const [restrooms, setRestrooms] = useState<Restroom[]>(DEFAULT_RESTROOMS);
   const [inspectionItems, setInspectionItems] = useState<InspectionItem[]>(DEFAULT_INSPECTION_ITEMS);
-  const [selectedId, setSelectedId] = useState(DEFAULT_RESTROOMS[0].id);
+  const [selectedId, setSelectedId] = useState(DEFAULT_RESTROOMS[0]?.id ?? "");
   const [showComplaint, setShowComplaint] = useState(false);
 
   useEffect(() => {
     const u1 = subscribeRestrooms(setRestrooms);
     const u2 = subscribeInspectionItems(setInspectionItems);
-    return () => { u1(); u2(); };
+    return () => {
+      u1();
+      u2();
+    };
   }, []);
 
-  const selectedRestroom = restrooms.find((r) => r.id === selectedId) ?? restrooms[0];
+  useEffect(() => {
+    if (restrooms.length === 0) return;
+
+    const exists = restrooms.some((r) => r.id === selectedId);
+    if (!exists) {
+      setSelectedId(restrooms[0].id);
+    }
+  }, [restrooms, selectedId]);
+
+  const selectedRestroom =
+    restrooms.find((r) => r.id === selectedId) ?? restrooms[0] ?? null;
 
   return (
     <Layout>
       <div className="py-2 space-y-4">
-        {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
@@ -41,6 +53,7 @@ export function Home({ onModeChange }: HomeProps) {
               <p className="text-xs text-slate-400">일일 청결 관리 시스템</p>
             </div>
           </div>
+
           <div className="flex gap-3 items-center">
             <ModeEntry mode="inspector" label="점검자" onSuccess={onModeChange} />
             <span className="text-slate-300">|</span>
@@ -48,16 +61,17 @@ export function Home({ onModeChange }: HomeProps) {
           </div>
         </div>
 
-        {/* Restroom Selector */}
         <RestroomSelector
           restrooms={restrooms}
           selectedId={selectedId}
           onChange={setSelectedId}
         />
 
-        {/* Grid */}
         <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">점검 항목</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+            점검 항목
+          </p>
+
           {selectedRestroom && (
             <RestroomGrid
               restroom={selectedRestroom}

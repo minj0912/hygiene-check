@@ -6,12 +6,12 @@ import { getFirestore } from "firebase/firestore";
 // Firebase Console → 프로젝트 설정 → 앱 → firebaseConfig 복사
 // =============================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyCndLX_Y4Cf3g_xHFfZx22aYilwxPvOv90",
+  authDomain: "restroom-8e1da.firebaseapp.com",
+  projectId: "restroom-8e1da",
+  storageBucket: "restroom-8e1da.firebasestorage.app",
+  messagingSenderId: "318591638843",
+  appId: "1:318591638843:web:4c9794fb8d2a6398876b1e",
 };
 
 const app = initializeApp(firebaseConfig);
