@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from "react";
 import {
   Toilet,
-  Droplets,
   ScrollText,
   Trash2,
-  WashingMachine,
   ScanFace,
   FileText,
   FlaskConical,
@@ -12,6 +10,8 @@ import {
   Wind,
   Pin,
   AlertCircle,
+  PersonStanding,   // 👈 추가 (소변기용)
+  Hand,             // 👈 추가 (세면대용)
 } from "lucide-react";
 import { Restroom, Inspection, InspectionItem } from "@/types";
 import { subscribeLatestInspectionByRestroom } from "@/lib/firestore";
@@ -37,7 +37,7 @@ function getItemIcon(item: InspectionItem) {
   }
 
   if (id === "urinal" || label.includes("소변기")) {
-    return <Droplets size={26} />;
+  return <PersonStanding size={26} />;
   }
 
   if (id === "paper" || label.includes("휴지")) {
@@ -45,11 +45,11 @@ function getItemIcon(item: InspectionItem) {
   }
 
   if (id === "bin" || label.includes("휴지통")) {
-    return <Trash2 size={26} />;
+  return <Trash2 size={26} />;
   }
 
   if (id === "sink" || label.includes("세면대")) {
-    return <WashingMachine size={26} />;
+  return <Hand size={26} />;
   }
 
   if (id === "mirror" || label.includes("거울")) {
