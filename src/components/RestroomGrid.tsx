@@ -81,7 +81,11 @@ function getLatestInspectionByPeriod(
   inspections: Inspection[],
   period: "오전" | "오후"
 ): Inspection | null {
-  const filtered = inspections.filter((inspection) => inspection.period === period);
+  const filtered = inspections.filter((inspection) => {
+    const p = String(inspection.period).trim();
+    return p === period;
+  });
+
   if (filtered.length === 0) return null;
 
   return filtered.reduce((latest, current) => {
