@@ -1,33 +1,12 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { CheckCircle, ArrowLeft, ClipboardCheck, Circle, Clock } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { CheckCircle, ArrowLeft, ClipboardCheck, Circle } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { DEFAULT_RESTROOMS, DEFAULT_INSPECTION_ITEMS } from "@/data/restrooms";
-import {
-  submitInspection,
-  subscribeRestrooms,
-  subscribeInspectionItems,
-  subscribeInspectionsByDate,
-} from "@/lib/firestore";
-import { Restroom, InspectionItem, ItemResult, Inspection } from "@/types";
-import { getPeriod, toDate } from "@/lib/utils";
+import { submitInspection, subscribeRestrooms, subscribeInspectionItems } from "@/lib/firestore";
+import { Restroom, InspectionItem, ItemResult } from "@/types";
 
 interface InspectorModeProps {
   onBack: () => void;
-}
-
-function getCurrentPeriod(): "오전" | "오후" {
-  return getPeriod(new Date());
-}
-
-// 오늘 특정 화장실의 특정 시간대 점검 완료 여부 확인
-function hasInspectionForPeriod(
-  inspections: Inspection[],
-  restroomId: string,
-  period: "오전" | "오후"
-): boolean {
-  return inspections.some(
-    (i) => i.restroomId === restroomId && String(i.period).trim() === period
-  );
 }
 
 export function InspectorMode({ onBack }: InspectorModeProps) {
@@ -39,16 +18,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [todayInspections, setTodayInspections] = useState<Inspection[]>([]);
-  const [currentPeriod, setCurrentPeriod] = useState<"오전" | "오후">(getCurrentPeriod);
-
-  // 1분마다 현재 시간대 갱신 (오전→오후 자동 전환)
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setCurrentPeriod(getCurrentPeriod());
-    }, 60 * 1000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     const u1 = subscribeRestrooms(setRestrooms);
@@ -56,26 +25,11 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
     return () => { u1(); u2(); };
   }, []);
 
-  // 오늘 점검 기록 구독 (중복 방지용)
-  useEffect(() => {
-    const unsub = subscribeInspectionsByDate(new Date(), (inspections) => {
-      setTodayInspections(inspections);
-    });
-    return () => unsub();
-  }, []);
-
   useEffect(() => {
     setResults({});
-    setError("");
   }, [selectedId]);
 
   const selectedRestroom = restrooms.find((r) => r.id === selectedId) ?? restrooms[0];
-
-  // 현재 시간대에 이미 점검 완료된 화장실인지 확인
-  const alreadyInspected = useMemo(
-    () => hasInspectionForPeriod(todayInspections, selectedId, currentPeriod),
-    [todayInspections, selectedId, currentPeriod]
-  );
 
   const setResult = (itemId: string, val: ItemResult) => {
     setResults((prev) => ({ ...prev, [itemId]: val }));
@@ -87,7 +41,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
   const handleSubmit = async () => {
     if (!inspectorName.trim()) { setError("점검자 이름을 입력해주세요"); return; }
     if (!allChecked) { setError(`모든 항목(${inspectionItems.length}개)을 선택해주세요`); return; }
-    if (alreadyInspected) { setError(`이미 ${currentPeriod} 점검이 완료된 화장실입니다`); return; }
     setError("");
     setLoading(true);
     try {
@@ -126,20 +79,9 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
           >
             <ArrowLeft size={18} className="text-slate-600" />
           </button>
-          <div className="flex-1">
+          <div>
             <h1 className="text-lg font-bold text-slate-800">점검자 모드</h1>
             <p className="text-xs text-slate-400">항목별 O/X를 선택 후 완료하세요</p>
-          </div>
-          {/* 현재 시간대 표시 배지 */}
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
-              currentPeriod === "오전"
-                ? "bg-blue-50 text-blue-600 border border-blue-200"
-                : "bg-orange-50 text-orange-600 border border-orange-200"
-            }`}
-          >
-            <Clock size={12} />
-            <span>현재 {currentPeriod}</span>
           </div>
         </div>
 
@@ -157,25 +99,12 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
               ))}
             </select>
           </div>
-
-          {/* 이미 점검 완료된 경우 경고 배너 */}
-          {alreadyInspected && (
-            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-              <CheckCircle size={16} className="text-amber-500 shrink-0" />
-              <p className="text-sm text-amber-700 font-medium">
-                이 화장실은 {currentPeriod} 점검이 이미 완료되었습니다.
-              </p>
-            </div>
-          )}
-
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">점검자 이름</label>
             <input
               value={inspectorName}
               onChange={(e) => { setInspectorName(e.target.value); setError(""); }}
-              className={`w-full border rounded-xl px-4 py-3 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                error && !inspectorName.trim() ? "border-red-400" : "border-slate-200"
-              }`}
+              className={`w-full border rounded-xl px-4 py-3 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 ${error && !inspectorName.trim() ? "border-red-400" : "border-slate-200"}`}
               placeholder="이름을 입력하세요"
             />
           </div>
@@ -259,12 +188,10 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
         {/* Submit */}
         <button
           onClick={handleSubmit}
-          disabled={loading || success || alreadyInspected}
+          disabled={loading || success}
           className={`w-full py-4 rounded-2xl text-base font-bold transition-all duration-200 flex items-center justify-center gap-2 ${
             success
               ? "bg-green-500 text-white"
-              : alreadyInspected
-              ? "bg-slate-200 text-slate-400 cursor-not-allowed"
               : allChecked && inspectorName.trim()
               ? "bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]"
               : "bg-slate-200 text-slate-400 cursor-not-allowed"
@@ -272,8 +199,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
         >
           {loading ? "저장 중..." : success ? (
             <><CheckCircle size={20} /> 점검 완료 저장됨!</>
-          ) : alreadyInspected ? (
-            <><CheckCircle size={20} /> {currentPeriod} 점검 완료됨</>
           ) : (
             <><ClipboardCheck size={20} /> 점검 완료 ({checkedCount}/{inspectionItems.length})</>
           )}
