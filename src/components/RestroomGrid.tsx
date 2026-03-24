@@ -77,14 +77,13 @@ function getDayKey(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
-// ✅ 핵심 수정: restroomId로 먼저 필터링한 뒤 period 필터링
 function getLatestInspectionByPeriod(
   inspections: Inspection[],
   restroomId: string,
   period: "오전" | "오후"
 ): Inspection | null {
   const filtered = inspections.filter((inspection) => {
-    const p = String(inspection.period).trim();
+    const p = String(inspection.period ?? "").trim();
     return inspection.restroomId === restroomId && p === period;
   });
 
@@ -122,6 +121,20 @@ function getLatestInspection(
   });
 }
 
+function getItemResultFromInspection(
+  inspection: Inspection | null,
+  itemId: string,
+  expectedPeriod: "오전" | "오후"
+): ItemResult | null {
+  if (!inspection) return null;
+
+  const period = String(inspection.period ?? "").trim();
+  if (period !== expectedPeriod) return null;
+
+  const value = inspection.items?.[itemId];
+  return value === "O" || value === "X" ? value : null;
+}
+
 function StatusDot({
   label,
   result,
@@ -144,7 +157,9 @@ function StatusDot({
       : "bg-slate-300";
 
   return (
-    <div className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${stateClass}`}>
+    <div
+      className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${stateClass}`}
+    >
       <span>{label}</span>
       <span className={`w-2.5 h-2.5 rounded-full ${dotClass}`} />
     </div>
@@ -244,7 +259,6 @@ export function RestroomGrid({
       return;
     }
 
-    // ✅ 날짜 전체 구독 (restroomId 필터는 각 함수 내부에서 처리)
     const unsub = subscribeInspectionsByDate(new Date(), (inspections) => {
       setTodayInspections(inspections);
     });
@@ -257,7 +271,6 @@ export function RestroomGrid({
 
   const allInspections = todayInspections ?? [];
 
-  // ✅ restroomId를 함수에 직접 전달해서 정확하게 필터링
   const amInspection = useMemo(
     () => getLatestInspectionByPeriod(allInspections, restroom.id, "오전"),
     [allInspections, restroom.id]
@@ -286,9 +299,9 @@ export function RestroomGrid({
         {itemsToShow.map((item) => {
           const icon = getItemIcon(item);
 
-          const amResult = amInspection?.items?.[item.id] ?? null;
-          const pmResult = pmInspection?.items?.[item.id] ?? null;
-          const cardResult = pmResult ?? amResult;
+          const amResult = getItemResultFromInspection(amInspection, item.id, "오전");
+          const pmResult = getItemResultFromInspection(pmInspection, item.id, "오후");
+          const cardResult = pmResult !== null ? pmResult : amResult;
 
           return (
             <div
