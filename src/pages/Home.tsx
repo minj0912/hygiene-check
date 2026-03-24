@@ -5,7 +5,7 @@ import { RestroomSelector } from "@/components/RestroomSelector";
 import { RestroomGrid } from "@/components/RestroomGrid";
 import { ComplaintForm } from "@/components/ComplaintForm";
 import { ModeEntry } from "@/components/ModeEntry";
-import { DEFAULT_RESTROOMS, DEFAULT_INSPECTION_ITEMS } from "@/data/restrooms";
+import { DEFAULT_INSPECTION_ITEMS } from "@/data/restrooms";
 import { subscribeRestrooms, subscribeInspectionItems } from "@/lib/firestore";
 import { AppMode, Restroom, InspectionItem } from "@/types";
 
@@ -22,9 +22,9 @@ function getRestroomIdFromUrl(): string {
 
 export function Home({ onModeChange }: HomeProps) {
   const initialRestroomIdFromUrl = useMemo(() => getRestroomIdFromUrl(), []);
-  const [restrooms, setRestrooms] = useState<Restroom[]>(DEFAULT_RESTROOMS);
+  const [restrooms, setRestrooms] = useState<Restroom[]>([]);
   const [inspectionItems, setInspectionItems] = useState<InspectionItem[]>(DEFAULT_INSPECTION_ITEMS);
-  const [selectedId, setSelectedId] = useState(initialRestroomIdFromUrl || DEFAULT_RESTROOMS[0]?.id || "");
+  const [selectedId, setSelectedId] = useState(initialRestroomIdFromUrl || "");
   const [showComplaint, setShowComplaint] = useState(false);
   const [language, setLanguage] = useState<Language>("ko");
 
@@ -41,32 +41,30 @@ export function Home({ onModeChange }: HomeProps) {
   }, []);
 
   useEffect(() => {
-    if (isLockedByQr) {
-      if (selectedId !== initialRestroomIdFromUrl) {
-        setSelectedId(initialRestroomIdFromUrl);
-      }
-      return;
-    }
-
     if (restrooms.length === 0) return;
+
+    if (initialRestroomIdFromUrl) {
+      const lockedRoomExists = restrooms.some((r) => r.id === initialRestroomIdFromUrl);
+      if (lockedRoomExists) {
+        if (selectedId !== initialRestroomIdFromUrl) {
+          setSelectedId(initialRestroomIdFromUrl);
+        }
+        return;
+      }
+    }
 
     const exists = restrooms.some((r) => r.id === selectedId);
     if (!exists) {
       setSelectedId(restrooms[0]?.id ?? "");
     }
-  }, [restrooms, selectedId, isLockedByQr, initialRestroomIdFromUrl]);
+  }, [restrooms, selectedId, initialRestroomIdFromUrl]);
 
   const selectedRestroom = useMemo(() => {
-    if (!selectedId) return restrooms[0] ?? null;
-
-    return (
-      restrooms.find((r) => r.id === selectedId) ??
-      DEFAULT_RESTROOMS.find((r) => r.id === selectedId) ??
-      restrooms[0] ??
-      DEFAULT_RESTROOMS[0] ??
-      null
-    );
+    if (!selectedId) return null;
+    return restrooms.find((r) => r.id === selectedId) ?? null;
   }, [restrooms, selectedId]);
+
+  const isQrRestroomLoading = isLockedByQr && !selectedRestroom;
 
   const text = {
     ko: {
@@ -80,6 +78,7 @@ export function Home({ onModeChange }: HomeProps) {
       complaintGuideEnd: "를 눌러주세요",
       inspector: "점검자",
       admin: "관리자",
+      loading: "불러오는 중...",
     },
     en: {
       title: "Restroom Hygiene Check",
@@ -92,6 +91,7 @@ export function Home({ onModeChange }: HomeProps) {
       complaintGuideEnd: ".",
       inspector: "Inspector",
       admin: "Admin",
+      loading: "Loading...",
     },
   }[language];
 
@@ -144,15 +144,22 @@ export function Home({ onModeChange }: HomeProps) {
           </p>
         </div>
 
-        {selectedRestroom && isLockedByQr ? (
+        {isLockedByQr ? (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
               {text.currentRestroom}
             </label>
-            <div className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-medium bg-slate-50">
-              {selectedRestroom.name}
-              {selectedRestroom.locationLabel ? ` (${selectedRestroom.locationLabel})` : ""}
-            </div>
+
+            {selectedRestroom ? (
+              <div className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-medium bg-slate-50">
+                {selectedRestroom.name}
+                {selectedRestroom.locationLabel ? ` (${selectedRestroom.locationLabel})` : ""}
+              </div>
+            ) : (
+              <div className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-400 font-medium bg-slate-50">
+                {text.loading}
+              </div>
+            )}
           </div>
         ) : (
           <RestroomSelector
@@ -167,13 +174,17 @@ export function Home({ onModeChange }: HomeProps) {
             {text.inspectionItems}
           </p>
 
-          {selectedRestroom && (
+          {selectedRestroom ? (
             <RestroomGrid
               restroom={selectedRestroom}
               inspectionItems={inspectionItems}
               language={language}
               onComplaintClick={() => setShowComplaint(true)}
             />
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-center text-slate-400">
+              {text.loading}
+            </div>
           )}
         </div>
 
