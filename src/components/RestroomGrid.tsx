@@ -77,13 +77,15 @@ function getDayKey(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
+// ✅ 핵심 수정: restroomId로 먼저 필터링한 뒤 period 필터링
 function getLatestInspectionByPeriod(
   inspections: Inspection[],
+  restroomId: string,
   period: "오전" | "오후"
 ): Inspection | null {
   const filtered = inspections.filter((inspection) => {
     const p = String(inspection.period).trim();
-    return p === period;
+    return inspection.restroomId === restroomId && p === period;
   });
 
   if (filtered.length === 0) return null;
@@ -99,10 +101,17 @@ function getLatestInspectionByPeriod(
   });
 }
 
-function getLatestInspection(inspections: Inspection[]): Inspection | null {
-  if (inspections.length === 0) return null;
+function getLatestInspection(
+  inspections: Inspection[],
+  restroomId: string
+): Inspection | null {
+  const filtered = inspections.filter(
+    (inspection) => inspection.restroomId === restroomId
+  );
 
-  return inspections.reduce((latest, current) => {
+  if (filtered.length === 0) return null;
+
+  return filtered.reduce((latest, current) => {
     const latestDate = toDate(latest.checkedAt);
     const currentDate = toDate(current.checkedAt);
 
@@ -113,31 +122,6 @@ function getLatestInspection(inspections: Inspection[]): Inspection | null {
   });
 }
 
-function getDisplayResult(
-  amInspection: Inspection | null,
-  pmInspection: Inspection | null,
-  itemId: string,
-  slot: "am" | "pm"
-): ItemResult | null {
-  const amResult = amInspection?.items?.[itemId] ?? null;
-  const pmResult = pmInspection?.items?.[itemId] ?? null;
-
-  if (slot === "am") {
-    // 오후 점검이 있으면 오전도 켜져 보이게 처리
-    return amResult ?? pmResult ?? null;
-  }
-
-  return pmResult ?? null;
-}
-
-function getCardResult(
-  amInspection: Inspection | null,
-  pmInspection: Inspection | null,
-  itemId: string
-): ItemResult | null {
-  return pmInspection?.items?.[itemId] ?? amInspection?.items?.[itemId] ?? null;
-}
-
 function StatusDot({
   label,
   result,
@@ -145,9 +129,6 @@ function StatusDot({
   label: string;
   result: ItemResult | null;
 }) {
-  const baseClass =
-    "flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold";
-
   const stateClass =
     result === "O"
       ? "border-green-200 bg-green-50 text-green-700"
@@ -163,7 +144,7 @@ function StatusDot({
       : "bg-slate-300";
 
   return (
-    <div className={`${baseClass} ${stateClass}`}>
+    <div className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${stateClass}`}>
       <span>{label}</span>
       <span className={`w-2.5 h-2.5 rounded-full ${dotClass}`} />
     </div>
@@ -263,9 +244,9 @@ export function RestroomGrid({
       return;
     }
 
+    // ✅ 날짜 전체 구독 (restroomId 필터는 각 함수 내부에서 처리)
     const unsub = subscribeInspectionsByDate(new Date(), (inspections) => {
-      const filtered = inspections.filter((inspection) => inspection.restroomId === restroom.id);
-      setTodayInspections(filtered);
+      setTodayInspections(inspections);
     });
 
     return () => unsub();
@@ -274,18 +255,22 @@ export function RestroomGrid({
   const itemsToShow =
     inspectionItems.length > 0 ? inspectionItems : DEFAULT_INSPECTION_ITEMS;
 
-  const restroomInspections = todayInspections ?? [];
+  const allInspections = todayInspections ?? [];
+
+  // ✅ restroomId를 함수에 직접 전달해서 정확하게 필터링
   const amInspection = useMemo(
-    () => getLatestInspectionByPeriod(restroomInspections, "오전"),
-    [restroomInspections]
+    () => getLatestInspectionByPeriod(allInspections, restroom.id, "오전"),
+    [allInspections, restroom.id]
   );
+
   const pmInspection = useMemo(
-    () => getLatestInspectionByPeriod(restroomInspections, "오후"),
-    [restroomInspections]
+    () => getLatestInspectionByPeriod(allInspections, restroom.id, "오후"),
+    [allInspections, restroom.id]
   );
+
   const latestInspection = useMemo(
-    () => getLatestInspection(restroomInspections),
-    [restroomInspections]
+    () => getLatestInspection(allInspections, restroom.id),
+    [allInspections, restroom.id]
   );
 
   return (
@@ -301,9 +286,9 @@ export function RestroomGrid({
         {itemsToShow.map((item) => {
           const icon = getItemIcon(item);
 
-          const amResult = getDisplayResult(amInspection, pmInspection, item.id, "am");
-          const pmResult = getDisplayResult(amInspection, pmInspection, item.id, "pm");
-          const cardResult = getCardResult(amInspection, pmInspection, item.id);
+          const amResult = amInspection?.items?.[item.id] ?? null;
+          const pmResult = pmInspection?.items?.[item.id] ?? null;
+          const cardResult = pmResult ?? amResult;
 
           return (
             <div
