@@ -64,8 +64,6 @@ export function Home({ onModeChange }: HomeProps) {
     return restrooms.find((r) => r.id === selectedId) ?? null;
   }, [restrooms, selectedId]);
 
-  const isQrRestroomLoading = isLockedByQr && !selectedRestroom;
-
   const text = {
     ko: {
       title: "위생점검 현황",
@@ -94,6 +92,18 @@ export function Home({ onModeChange }: HomeProps) {
       loading: "Loading...",
     },
   }[language];
+
+  const handleEnterInspector = () => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (initialRestroomIdFromUrl) {
+      params.set("restroom", initialRestroomIdFromUrl);
+    }
+
+    params.set("mode", "inspector");
+    window.history.replaceState({}, "", `?${params.toString()}`);
+    onModeChange("inspector");
+  };
 
   return (
     <Layout>
@@ -132,8 +142,16 @@ export function Home({ onModeChange }: HomeProps) {
               </button>
             </div>
 
-            <ModeEntry mode="inspector" label={text.inspector} onSuccess={onModeChange} />
+            <button
+              type="button"
+              onClick={handleEnterInspector}
+              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors"
+            >
+              {text.inspector}
+            </button>
+
             <span className="text-slate-300">|</span>
+
             <ModeEntry mode="admin" label={text.admin} onSuccess={onModeChange} />
           </div>
         </div>
