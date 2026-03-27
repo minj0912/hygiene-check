@@ -208,7 +208,7 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
                 <label className="block text-sm font-bold text-slate-700 mb-2">점검 화장실</label>
                 <div className="w-full border border-blue-200 bg-blue-50 rounded-xl px-4 py-3 text-base text-slate-800 font-medium">
                   {selectedRestroom
-                    ? `${selectedRestroom.floor} ${selectedRestroom.name}`
+                    ? `${selectedRestroom.name}${selectedRestroom.locationLabel ? ` (${selectedRestroom.locationLabel})` : ""}`
                     : "화장실 정보를 불러오는 중..."}
                 </div>
               </div>
