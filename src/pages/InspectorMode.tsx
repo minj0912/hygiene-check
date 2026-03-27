@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { CheckCircle, ArrowLeft, ClipboardCheck, Circle, Clock } from "lucide-react";
-import { useLocation } from "wouter";
 import { Layout } from "@/components/Layout";
 import { DEFAULT_RESTROOMS, DEFAULT_INSPECTION_ITEMS } from "@/data/restrooms";
 import {
@@ -20,6 +19,11 @@ function getCurrentPeriod(): "오전" | "오후" {
   return getPeriod(new Date());
 }
 
+function getLockedRestroomIdFromUrl(): string {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("restroom") ?? "";
+}
+
 // 오늘 특정 화장실의 특정 시간대 점검 완료 여부 확인
 function hasInspectionForPeriod(
   inspections: Inspection[],
@@ -32,14 +36,7 @@ function hasInspectionForPeriod(
 }
 
 export function InspectorMode({ onBack }: InspectorModeProps) {
-  const [location] = useLocation();
-
-  const lockedRestroomId = useMemo(() => {
-    const queryString = location.includes("?") ? location.split("?")[1] : "";
-    const params = new URLSearchParams(queryString);
-    return params.get("restroom");
-  }, [location]);
-
+  const lockedRestroomId = useMemo(() => getLockedRestroomIdFromUrl(), []);
   const isQrLocked = !!lockedRestroomId;
 
   const [restrooms, setRestrooms] = useState<Restroom[]>(DEFAULT_RESTROOMS);
@@ -53,7 +50,7 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
   const [todayInspections, setTodayInspections] = useState<Inspection[]>([]);
   const [currentPeriod, setCurrentPeriod] = useState<"오전" | "오후">(getCurrentPeriod);
 
-  // 1분마다 현재 시간대 갱신 (오전→오후 자동 전환)
+  // 1분마다 현재 시간대 갱신
   useEffect(() => {
     const timer = window.setInterval(() => {
       setCurrentPeriod(getCurrentPeriod());
@@ -70,25 +67,25 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
     };
   }, []);
 
-  // QR로 들어온 경우 해당 화장실로 고정
+  // QR로 들어온 경우 해당 화장실로 강제 고정
   useEffect(() => {
-    if (lockedRestroomId) {
-      setSelectedId(lockedRestroomId);
-    }
-  }, [lockedRestroomId]);
-
-  // QR이 없고 현재 selectedId가 비어 있거나 목록에 없는 경우 첫 화장실로 보정
-  useEffect(() => {
-    if (lockedRestroomId) return;
     if (!restrooms.length) return;
 
+    if (lockedRestroomId) {
+      const lockedRoomExists = restrooms.some((r) => r.id === lockedRestroomId);
+      if (lockedRoomExists && selectedId !== lockedRestroomId) {
+        setSelectedId(lockedRestroomId);
+      }
+      return;
+    }
+
     const exists = restrooms.some((r) => r.id === selectedId);
-    if (!selectedId || !exists) {
-      setSelectedId(restrooms[0].id);
+    if (!exists) {
+      setSelectedId(restrooms[0]?.id ?? "");
     }
   }, [restrooms, selectedId, lockedRestroomId]);
 
-  // 오늘 점검 기록 구독 (중복 방지용)
+  // 오늘 점검 기록 구독
   useEffect(() => {
     const unsub = subscribeInspectionsByDate(new Date(), (inspections) => {
       setTodayInspections(inspections);
@@ -106,7 +103,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
     restrooms.find((r) => r.id === lockedRestroomId) ??
     restrooms[0];
 
-  // 현재 시간대에 이미 점검 완료된 화장실인지 확인
   const alreadyInspected = useMemo(() => {
     if (!selectedRestroom?.id) return false;
     return hasInspectionForPeriod(todayInspections, selectedRestroom.id, currentPeriod);
@@ -173,7 +169,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
   return (
     <Layout>
       <div className="py-2 space-y-4">
-        {/* Header */}
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -187,7 +182,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
             <p className="text-xs text-slate-400">항목별 O/X를 선택 후 완료하세요</p>
           </div>
 
-          {/* 현재 시간대 표시 배지 */}
           <div
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
               currentPeriod === "오전"
@@ -200,7 +194,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
           </div>
         </div>
 
-        {/* 화장실 + 이름 */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
           {isQrLocked ? (
             <>
@@ -237,7 +230,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
             </div>
           )}
 
-          {/* 이미 점검 완료된 경우 경고 배너 */}
           {alreadyInspected && (
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
               <CheckCircle size={16} className="text-amber-500 shrink-0" />
@@ -263,7 +255,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
           </div>
         </div>
 
-        {/* 항목별 O/X */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -281,7 +272,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
             </button>
           </div>
 
-          {/* Progress bar */}
           <div className="w-full bg-slate-100 rounded-full h-1.5 mb-4">
             <div
               className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
@@ -351,7 +341,6 @@ export function InspectorMode({ onBack }: InspectorModeProps) {
 
         {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
 
-        {/* Submit */}
         <button
           onClick={handleSubmit}
           disabled={loading || success || alreadyInspected || !selectedRestroom}
