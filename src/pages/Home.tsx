@@ -93,15 +93,17 @@ export function Home({ onModeChange }: HomeProps) {
     },
   }[language];
 
-  const handleEnterInspector = () => {
+  const handleInspectorSuccess = () => {
     const params = new URLSearchParams(window.location.search);
 
     if (initialRestroomIdFromUrl) {
       params.set("restroom", initialRestroomIdFromUrl);
     }
 
-    params.set("mode", "inspector");
-    window.history.replaceState({}, "", `?${params.toString()}`);
+    if (params.toString()) {
+      window.history.replaceState({}, "", `?${params.toString()}`);
+    }
+
     onModeChange("inspector");
   };
 
@@ -142,16 +144,8 @@ export function Home({ onModeChange }: HomeProps) {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleEnterInspector}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors"
-            >
-              {text.inspector}
-            </button>
-
+            <ModeEntry mode="inspector" label={text.inspector} onSuccess={handleInspectorSuccess} />
             <span className="text-slate-300">|</span>
-
             <ModeEntry mode="admin" label={text.admin} onSuccess={onModeChange} />
           </div>
         </div>
