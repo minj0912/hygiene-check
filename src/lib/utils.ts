@@ -36,7 +36,7 @@ export function formatDateShort(val: Timestamp | Date | undefined | null): strin
 
 export function verifyPassword(input: string, mode: "inspector" | "admin"): boolean {
   const passwords: Record<string, string> = {
-    inspector: "6481",
+    inspector: "6400",
     admin: "6167",
   };
   return input === passwords[mode];
